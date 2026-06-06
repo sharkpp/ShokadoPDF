@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ShokadoPDF offline WASM regression harness</title>
+  </head>
+  <body>
+    <pre id="out">starting…</pre>
+    <script type="module">
+      // Exercises the locally-bundled AGPL WASM modules (PyMuPDF + CoherentPDF)
+      // against a real PDF. Served from the built `core/dist` origin by
+      // scripts/offline-regression.mjs, which blocks every non-localhost
+      // request — so a PASS proves the features work fully offline.
+      const out = document.getElementById('out');
+      const log = (m) => {
+        out.textContent += '\n' + m;
+      };
+      const result = { pymupdf: null, cpdf: null };
+      window.__RESULT__ = result;
+      window.__DONE__ = false;
+
+      const SAMPLE = '/__shokado_sample.pdf';
+
+      (async () => {
+        // --- PyMuPDF (Pyodide): open + pageCount + extractText ---
+        try {
+          log('[pymupdf] import /wasm/pymupdf/dist/index.js');
+          const mod = await import('/wasm/pymupdf/dist/index.js');
+          const pm = new mod.PyMuPDF({
+            assetPath: '/wasm/pymupdf/assets/',
+            ghostscriptUrl: '/wasm/gs/',
+          });
+          log('[pymupdf] load() — booting Pyodide (heavy)…');
+          await pm.load();
+          const buf = await (await fetch(SAMPLE)).arrayBuffer();
+          const blob = new Blob([buf], { type: 'application/pdf' });
+          const doc = await pm.open(blob);
+          const pageCount = doc.pageCount;
+          const text = await pm.extractText(blob);
+          const sample = (text || '').replace(/\s+/g, ' ').trim();
+          result.pymupdf = {
+            ok: pageCount === 1 && /Hello/.test(sample),
+            pageCount,
+            textSample: sample.slice(0, 60),
+          };
+          log('[pymupdf] pages=' + pageCount + ' text="' + result.pymupdf.textSample + '"');
+        } catch (e) {
+          result.pymupdf = { ok: false, error: String((e && e.stack) || e) };
+          log('[pymupdf] FAIL ' + e);
+        }
+
+        // --- CoherentPDF via the app's real merge worker ---
+        try {
+          log('[cpdf] merge 2x sample via workers/merge.worker.js');
+          const buf = await (await fetch(SAMPLE)).arrayBuffer();
+          const f1 = buf.slice(0);
+          const f2 = buf.slice(0);
+          const files = [
+            { name: 'a.pdf', data: f1 },
+            { name: 'b.pdf', data: f2 },
+          ];
+          const jobs = files.map((f) => ({ fileName: f.name, rangeType: 'all' }));
+          const merged = await new Promise((resolve, reject) => {
+            const w = new Worker('/workers/merge.worker.js');
+            const t = setTimeout(() => {
+              w.terminate();
+              reject(new Error('cpdf worker timeout'));
+            }, 60000);
+            w.onmessage = (ev) => {
+              if (ev.data.status === 'success') {
+                clearTimeout(t);
+                w.terminate();
+                resolve(new Uint8Array(ev.data.pdfBytes));
+              } else if (ev.data.status === 'error') {
+                clearTimeout(t);
+                w.terminate();
+                reject(new Error(ev.data.message || 'worker error'));
+              }
+            };
+            w.onerror = (er) => {
+              clearTimeout(t);
+              w.terminate();
+              reject(new Error(er.message || 'worker onerror'));
+            };
+            w.postMessage(
+              {
+                command: 'merge',
+                files,
+                jobs,
+                cpdfUrl: '/wasm/cpdf/coherentpdf.browser.min.js',
+                retainPageLabels: false,
+              },
+              [f1, f2]
+            );
+          });
+          const head = new TextDecoder().decode(merged.slice(0, 5));
+          result.cpdf = { ok: head === '%PDF-', bytes: merged.length, head };
+          log('[cpdf] bytes=' + merged.length + ' head=' + head);
+        } catch (e) {
+          result.cpdf = { ok: false, error: String((e && e.stack) || e) };
+          log('[cpdf] FAIL ' + e);
+        }
+
+        window.__DONE__ = true;
+        log('DONE');
+      })();
+    </script>
+  </body>
+</html>

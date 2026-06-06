@@ -9,9 +9,11 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "ios:dev": "tauri ios dev",
-    "android:dev": "tauri android dev"
+    "android:dev": "tauri android dev",
+    "test:offline": "node scripts/offline-regression.mjs"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "puppeteer-core": "^24"
   }
 }
