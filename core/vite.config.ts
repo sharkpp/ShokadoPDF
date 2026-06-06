@@ -464,6 +464,28 @@ export default defineConfig(() => {
       src: 'node_modules/embedpdf-snippet/dist/pdfium.wasm',
       dest: 'embedpdf',
     },
+    // --- ShokadoPDF: offline-bundled AGPL WASM modules (Tier 1) ---
+    // Served at /wasm/* so VITE_WASM_*_URL can point to local paths
+    // instead of the jsdelivr CDN (see .env.production / .env.development).
+    // PyMuPDF (Pyodide): wrapper dist/index.js + Python/pyodide assets.
+    {
+      src: 'node_modules/@bentopdf/pymupdf-wasm/dist/*',
+      dest: 'wasm/pymupdf/dist',
+    },
+    {
+      src: 'node_modules/@bentopdf/pymupdf-wasm/assets/*',
+      dest: 'wasm/pymupdf/assets',
+    },
+    // Ghostscript: gs.js + gs.wasm (package keeps them under assets/).
+    {
+      src: 'node_modules/@bentopdf/gs-wasm/assets/*',
+      dest: 'wasm/gs',
+    },
+    // CoherentPDF: self-contained browser build (no separate .wasm).
+    {
+      src: 'node_modules/coherentpdf/dist/coherentpdf.browser.min.js',
+      dest: 'wasm/cpdf',
+    },
   ];
 
   return {
