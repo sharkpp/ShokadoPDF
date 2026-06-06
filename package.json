@@ -1,0 +1,17 @@
+{
+  "name": "shokadopdf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ShokadoPDF — BentoPDF をベースにした Tauri クロスプラットフォームアプリ",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "ios:dev": "tauri ios dev",
+    "android:dev": "tauri android dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
