@@ -4,10 +4,12 @@
 // `core/` (git subtree) stays untouched.
 //
 // Scope:
-//   - All pages: rebrand to "ShokadoPDF", trim nav to everything up to "Contact".
-//   - Home page only (detected by #tool-grid): keep only the tools area
-//     (#tools-header + #grid-view); remove hero/features/compliance/FAQ/
-//     testimonials/footer — i.e. everything above and below the tools.
+//   - All pages: rebrand to "ShokadoPDF", trim nav to everything up to
+//     "Contact", and drop the donation ribbon (#donation-ribbon).
+//   - Home page only (detected by #tool-grid): keep only the tool grid
+//     (#grid-view); remove the hero/features/tools-header (incl. the
+//     "Click a tool…" subtitle)/compliance/FAQ/testimonials/footer — i.e.
+//     everything above and below the tool grid itself.
 (function () {
   "use strict";
   if (window.top !== window) return; // top frame only
@@ -37,6 +39,11 @@
     doc.querySelectorAll('nav a[href*="github.com"]').forEach(function (a) {
       a.remove();
     });
+
+    // 3) Remove the donation ribbon (ko-fi / GitHub Sponsor) — it sits above
+    //    #app, so it is not covered by the home-page section cleanup below.
+    var ribbon = doc.getElementById("donation-ribbon");
+    if (ribbon) ribbon.remove();
   }
 
   function stripHomeMarketing(doc) {
@@ -44,7 +51,8 @@
     if (!doc.getElementById("tool-grid")) return;
     var app = doc.getElementById("app");
     if (app) {
-      var keep = { "tools-header": 1, "grid-view": 1 };
+      // Keep only the tool grid; drop hero/features/tools-header/compliance/etc.
+      var keep = { "grid-view": 1 };
       Array.prototype.slice.call(app.children).forEach(function (child) {
         if (!keep[child.id]) child.remove();
       });

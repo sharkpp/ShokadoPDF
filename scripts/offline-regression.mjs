@@ -172,8 +172,9 @@ async function main() {
         hasFeatures: !!document.getElementById('features-section'),
         hasCompliance: !!document.getElementById('security-compliance-section'),
         hasFooter: !!document.querySelector('footer'),
-        hasToolGrid: !!document.getElementById('tool-grid'),
+        hasDonationRibbon: !!document.getElementById('donation-ribbon'),
         hasToolsHeader: !!document.getElementById('tools-header'),
+        hasToolGrid: !!document.getElementById('tool-grid'),
       }));
       console.log('Part B UI:', JSON.stringify(ui, null, 2));
       const checks = [
@@ -185,8 +186,9 @@ async function main() {
         [!ui.hasFeatures, 'features section removed'],
         [!ui.hasCompliance, 'compliance section removed'],
         [!ui.hasFooter, 'footer removed'],
+        [!ui.hasDonationRibbon, 'donation ribbon removed'],
+        [!ui.hasToolsHeader, 'tools header (incl. subtitle) removed'],
         [ui.hasToolGrid, 'tool grid kept'],
-        [ui.hasToolsHeader, 'tools header kept'],
       ];
       for (const [ok, label] of checks) if (!ok) failures.push('B: ' + label);
       await page.close();
