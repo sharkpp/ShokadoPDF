@@ -90,12 +90,18 @@
   }
 
   function rebrandAndTrimNav(doc) {
-    // Brand text -> ShokadoPDF
-    var brand =
+    // Brand text -> ShokadoPDF. Standard pages use #nav-brand; the full-editor
+    // pages (e.g. pdf-multi-tool) use a plain <a>BentoPDF</a> in the nav.
+    var brandEls = [];
+    var nb =
       doc.querySelector("#nav-brand a") || doc.querySelector("#nav-brand");
-    if (brand && brand.textContent.trim() !== "ShokadoPDF") {
-      brand.textContent = "ShokadoPDF";
-    }
+    if (nb) brandEls.push(nb);
+    doc.querySelectorAll("nav a").forEach(function (a) {
+      if (a.textContent.trim() === "BentoPDF") brandEls.push(a);
+    });
+    brandEls.forEach(function (el) {
+      if (el.textContent.trim() !== "ShokadoPDF") el.textContent = "ShokadoPDF";
+    });
     var logo = doc.querySelector("#nav-logo");
     if (logo) logo.setAttribute("alt", "ShokadoPDF Logo");
     if (!isAboutPage()) doc.title = "ShokadoPDF";

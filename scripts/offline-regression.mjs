@@ -280,9 +280,11 @@ async function main() {
         .catch(() => {});
       const e = await page.evaluate(() => {
         const h = document.getElementById('shokado-mt-header');
+        const navLinks = [...document.querySelectorAll('nav a')].map((a) => a.textContent.trim());
         return {
           hasHeader: !!h,
           title: h ? (h.querySelector('h1') || {}).textContent : null,
+          brandFixed: navLinks.includes('ShokadoPDF') && !navLinks.includes('BentoPDF'),
           hasToolbar: !!document.querySelector('.toolbar-container'),
           headerAboveToolbar: !!(
             h &&
@@ -295,6 +297,7 @@ async function main() {
       console.log('Part E (pdf-multi-tool.html):', JSON.stringify(e));
       if (!e.hasHeader) failures.push('E: multi-tool header not injected');
       if (e.title !== 'PDFマルチツール') failures.push('E: multi-tool header title wrong');
+      if (!e.brandFixed) failures.push('E: multi-tool brand not rebranded to ShokadoPDF');
       if (!e.hasToolbar) failures.push('E: multi-tool toolbar missing (layout broken)');
       if (!e.headerAboveToolbar) failures.push('E: header not above toolbar');
       await page.close();
