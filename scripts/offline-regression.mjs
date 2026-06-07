@@ -253,6 +253,44 @@ async function main() {
       if (d.hasOldHero) failures.push('D: original BentoPDF about content still present');
       await page.close();
     }
+
+    // ---------- Part E: pdf-multi-tool gets a visible header ----------
+    {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await page.evaluateOnNewDocument(customizeJs);
+      await page.goto(`http://localhost:${PORT}/pdf-multi-tool.html`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
+      await page
+        .waitForFunction(() => !!document.getElementById('shokado-mt-header'), {
+          timeout: 15000,
+          polling: 250,
+        })
+        .catch(() => {});
+      const e = await page.evaluate(() => {
+        const h = document.getElementById('shokado-mt-header');
+        return {
+          hasHeader: !!h,
+          title: h ? (h.querySelector('h1') || {}).textContent : null,
+          hasToolbar: !!document.querySelector('.toolbar-container'),
+          headerAboveToolbar: !!(
+            h &&
+            document.querySelector('.toolbar-container') &&
+            h.compareDocumentPosition(document.querySelector('.toolbar-container')) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+          ),
+        };
+      });
+      console.log('Part E (pdf-multi-tool.html):', JSON.stringify(e));
+      if (!e.hasHeader) failures.push('E: multi-tool header not injected');
+      if (e.title !== 'PDFマルチツール') failures.push('E: multi-tool header title wrong');
+      if (!e.hasToolbar) failures.push('E: multi-tool toolbar missing (layout broken)');
+      if (!e.headerAboveToolbar) failures.push('E: header not above toolbar');
+      await page.close();
+    }
   } finally {
     await browser.close();
     server.close();

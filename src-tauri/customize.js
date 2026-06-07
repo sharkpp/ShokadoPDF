@@ -12,6 +12,8 @@
 //     drop hero/features/tools-header/compliance/FAQ/testimonials/footer.
 //   - About page (about.html): replace the body with ShokadoPDF's own about
 //     content (keeps the app shell/nav so it isn't a dead end).
+//   - pdf-multi-tool page: add a visible title+subtitle header (it is the only
+//     tool page that ships without one).
 (function () {
   "use strict";
   if (window.top !== window) return; // top frame only
@@ -96,11 +98,34 @@
     doc.title = "ShokadoPDFについて";
   }
 
+  function isMultiToolPage() {
+    var p = location.pathname.replace(/\/+$/, "");
+    return /(^|\/)pdf-multi-tool(\.html)?$/.test(p);
+  }
+
+  function injectMultiToolHeader(doc) {
+    // pdf-multi-tool is the only page lacking a visible title header (it has a
+    // sr-only <h1> + toolbar). Give it a title+subtitle header like merge-pdf.
+    if (!isMultiToolPage() || doc.getElementById("shokado-mt-header")) return;
+    var toolbar = doc.querySelector(".toolbar-container");
+    var main = toolbar ? toolbar.parentElement : null; // the flex-1 container
+    if (!main || !main.parentElement) return;
+    var hdr = doc.createElement("div");
+    hdr.id = "shokado-mt-header";
+    hdr.className =
+      "flex-none text-center bg-gray-900 border-b border-gray-800 px-4 pt-4 pb-3";
+    hdr.innerHTML =
+      '<h1 class="text-2xl font-bold text-white mb-1">PDFマルチツール</h1>' +
+      '<p class="text-gray-400 text-sm">結合・分割・整理・削除・回転・空白ページ追加・抽出・複製を、ひとつの画面で。</p>';
+    main.parentElement.insertBefore(hdr, main);
+  }
+
   function apply() {
     try {
       rebrandAndTrimNav(document);
       stripHomeMarketing(document);
       replaceAbout(document);
+      injectMultiToolHeader(document);
     } catch (e) {
       // Never let customization break the app.
       console.warn("[ShokadoPDF] customize error:", e);
