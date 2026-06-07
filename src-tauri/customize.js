@@ -92,16 +92,14 @@
       grp.className = "shokado-navlinks";
       grp.setAttribute(
         "style",
-        "margin-left:auto;display:flex;gap:1.5rem;align-items:center;",
+        "margin-left:auto;display:flex;gap:0.5rem;align-items:center;",
       );
       var mk = function (href, label) {
         var a = doc.createElement("a");
         a.href = href;
         a.textContent = label;
-        a.setAttribute(
-          "style",
-          "color:#d1d5db;font-weight:500;text-decoration:none;white-space:nowrap;",
-        );
+        a.className = "nav-link";
+        a.style.whiteSpace = "nowrap";
         return a;
       };
       if (!isHome()) grp.appendChild(mk(base, "ホーム"));
@@ -135,6 +133,17 @@
     main.parentElement.insertBefore(hdr, main);
   }
 
+  // (8b) Strip the pdf-multi-tool nav's "PDF Multi Tool" label and Close button
+  // so its header matches the other pages (brand + nav links only).
+  function stripMultiToolNav(doc) {
+    if (!isMultiTool()) return;
+    doc.querySelectorAll("nav span").forEach(function (s) {
+      if (s.textContent.trim() === "PDF Multi Tool") s.remove();
+    });
+    var close = doc.getElementById("close-tool-btn");
+    if (close) close.remove();
+  }
+
   function apply() {
     try {
       removeUsedByBanner(document);
@@ -144,6 +153,7 @@
       addNavLinks(document);
       replaceAbout(document);
       injectMultiToolHeader(document);
+      stripMultiToolNav(document);
     } catch (e) {
       console.warn("[ShokadoPDF] customize error:", e);
     }

@@ -141,6 +141,7 @@ async function main() {
         back: !!document.getElementById('back-to-tools'),
         home: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ホーム'),
         about: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
+        navLinkClass: [...document.querySelectorAll('nav a.nav-link')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
         padTop: cs && cs.paddingTop, padLeft: cs && cs.paddingLeft,
       };
     });
@@ -148,6 +149,7 @@ async function main() {
     if (tool.back) failures.push('tool: Back to Tools not removed');
     if (!tool.home) failures.push('tool: Home nav link missing');
     if (!tool.about) failures.push('tool: About nav link missing');
+    if (!tool.navLinkClass) failures.push('tool: nav links missing class="nav-link"');
     if (tool.padTop !== tool.padLeft) failures.push(`tool: uploader top gap != side gap (${tool.padTop} vs ${tool.padLeft})`);
     await p.close();
 
@@ -161,10 +163,14 @@ async function main() {
     const mt = await p.evaluate(() => ({
       header: !!document.getElementById('shokado-mt-header'),
       toolbar: !!document.querySelector('.toolbar-container'),
+      navLabel: [...document.querySelectorAll('nav span')].some((s) => s.textContent.trim() === 'PDF Multi Tool'),
+      close: !!document.getElementById('close-tool-btn'),
     }));
     console.log('multi-tool:', JSON.stringify(mt));
     if (!mt.header) failures.push('multi-tool: header not injected');
     if (!mt.toolbar) failures.push('multi-tool: toolbar missing (layout broken)');
+    if (mt.navLabel) failures.push('multi-tool: nav "PDF Multi Tool" label not removed');
+    if (mt.close) failures.push('multi-tool: Close button not removed');
     await p.close();
   } finally {
     await browser.close();
