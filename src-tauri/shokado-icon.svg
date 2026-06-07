@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ShokadoPDF">
+  <!-- Shokado bento box: a square lacquer box split into four compartments
+       by a cross divider — the motif behind "ShokadoPDF". -->
+  <rect x="44" y="44" width="424" height="424" rx="76" fill="#0f172a"/>
+  <rect x="44" y="44" width="424" height="424" rx="76" fill="none" stroke="#6366f1" stroke-width="22"/>
+  <!-- four compartments (the gaps between them form the cross divider) -->
+  <rect x="92"  y="92"  width="150" height="150" rx="22" fill="#f8fafc"/>
+  <rect x="270" y="92"  width="150" height="150" rx="22" fill="#fb7185"/>
+  <rect x="92"  y="270" width="150" height="150" rx="22" fill="#34d399"/>
+  <rect x="270" y="270" width="150" height="150" rx="22" fill="#fbbf24"/>
+</svg>
