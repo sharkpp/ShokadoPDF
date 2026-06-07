@@ -124,6 +124,7 @@ async function main() {
       about: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
       homeLink: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ホーム'),
       usedBy: !!document.querySelector('[data-i18n="usedBy.title"]'),
+      langOpts: (document.querySelector('#simple-mode-lang-switcher select.shokado-lang') || { options: [] }).options.length,
     }));
     console.log('home:', JSON.stringify(home));
     if (!/sharkpp/.test(home.copyright)) failures.push('home: footer copyright not updated');
@@ -131,6 +132,7 @@ async function main() {
     if (!home.about) failures.push('home: About nav link missing');
     if (home.homeLink) failures.push('home: Home nav link should be hidden on top page');
     if (home.usedBy) failures.push('home: usedBy banner present');
+    if (home.langOpts < 2) failures.push(`home: footer language switcher empty (opts=${home.langOpts})`);
     await p.close();
 
     p = await openUI('merge-pdf.html'); // tool page
@@ -175,11 +177,13 @@ async function main() {
       return {
         align: w ? getComputedStyle(w).alignItems : '',
         maxw: card ? card.style.maxWidth : '',
+        back: !!document.querySelector('[id^="back-to-tools"], [data-i18n="tools.backToTools"]'),
       };
     });
     console.log('form-creator:', JSON.stringify(fc));
     if (fc.align !== 'flex-start') failures.push('form-creator: not top-aligned');
     if (fc.maxw !== 'none') failures.push('form-creator: card not widened (max-width)');
+    if (fc.back) failures.push('form-creator: Back to Tools not removed');
     await p.close();
 
     p = await openUI('about.html'); // about page

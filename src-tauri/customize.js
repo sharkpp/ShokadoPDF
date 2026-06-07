@@ -118,8 +118,16 @@
 
   // (4) Remove the "Back to Tools" button on tool pages.
   function removeBackToTools(doc) {
-    var b = doc.getElementById("back-to-tools");
-    if (b) b.remove();
+    // Covers #back-to-tools and variants like #back-to-tools-upload/-creator
+    // (form-creator), plus any other control labeled "Back to Tools".
+    doc.querySelectorAll('[id^="back-to-tools"]').forEach(function (b) {
+      b.remove();
+    });
+    doc
+      .querySelectorAll('[data-i18n="tools.backToTools"]')
+      .forEach(function (s) {
+        (s.closest("button, a") || s).remove();
+      });
   }
 
   // (5) Shrink the gap above #uploader to match its horizontal gap.
@@ -197,6 +205,97 @@
     if (close) close.remove();
   }
 
+  // Footer language switcher. The native #simple-mode-lang-switcher renders
+  // empty in some environments, so build a self-contained one (matches the
+  // app's URL scheme: en=root, others=/<lang>/<page>; persists i18nextLng).
+  var LANGS = [
+    ["en", "English"],
+    ["ja", "日本語"],
+    ["ar", "العربية"],
+    ["be", "Беларуская"],
+    ["ru", "Русский"],
+    ["fr", "Français"],
+    ["de", "Deutsch"],
+    ["es", "Español"],
+    ["zh", "中文"],
+    ["zh-TW", "繁體中文（台灣）"],
+    ["vi", "Tiếng Việt"],
+    ["tr", "Türkçe"],
+    ["id", "Bahasa Indonesia"],
+    ["it", "Italiano"],
+    ["pt", "Português"],
+    ["nl", "Nederlands"],
+    ["da", "Dansk"],
+    ["sv", "Svenska"],
+    ["ko", "한국어"],
+    ["uk", "Українська"],
+    ["sk", "Slovenčina"],
+  ];
+  var LANG_PREFIX =
+    /^\/(en|ar|fr|es|de|zh|zh-TW|vi|tr|id|it|pt|nl|be|da|ko|sv|ru|ja|uk|sk)(\/.*)?$/;
+
+  function currentLang() {
+    var m = location.pathname.match(LANG_PREFIX);
+    if (m) return m[1];
+    try {
+      var s = localStorage.getItem("i18nextLng");
+      if (s) {
+        for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === s) return s;
+      }
+    } catch (e) {}
+    return "en";
+  }
+  function switchLang(lang) {
+    try {
+      localStorage.setItem("i18nextLng", lang);
+    } catch (e) {}
+    var rel = location.pathname;
+    if (rel.charAt(0) !== "/") rel = "/" + rel;
+    var m = rel.match(LANG_PREFIX);
+    var page = m ? m[2] || "/" : rel;
+    if (page.charAt(0) !== "/") page = "/" + page;
+    var np = (lang === "en" ? page : "/" + lang + page).replace(/\/+/g, "/");
+    location.href = np + location.search + location.hash;
+  }
+  function buildLangSwitcher(doc) {
+    var sel = doc.createElement("select");
+    sel.className = "shokado-lang";
+    sel.setAttribute("aria-label", "Language");
+    sel.setAttribute(
+      "style",
+      "background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;border-radius:9999px;" +
+        "padding:6px 30px 6px 14px;font-size:14px;cursor:pointer;appearance:none;-webkit-appearance:none;" +
+        "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%239ca3af' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\");" +
+        "background-repeat:no-repeat;background-position:right 10px center;background-size:14px;",
+    );
+    var cur = currentLang();
+    LANGS.forEach(function (l) {
+      var o = doc.createElement("option");
+      o.value = l[0];
+      o.textContent = l[1];
+      o.style.color = "#111827";
+      if (l[0] === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", function () {
+      switchLang(sel.value);
+    });
+    return sel;
+  }
+  function ensureLangSwitcher(doc) {
+    var c = doc.getElementById("simple-mode-lang-switcher");
+    if (!c) return;
+    if (
+      c.children.length === 1 &&
+      c.firstElementChild.classList &&
+      c.firstElementChild.classList.contains("shokado-lang")
+    ) {
+      return; // already only our switcher
+    }
+    c.innerHTML = "";
+    c.appendChild(buildLangSwitcher(doc));
+  }
+
   function apply() {
     try {
       applyLogo(document);
@@ -206,6 +305,7 @@
       tightenUploaderGap(document);
       fixToolGaps(document);
       addNavLinks(document);
+      ensureLangSwitcher(document);
       replaceAbout(document);
       injectMultiToolHeader(document);
       stripMultiToolNav(document);
