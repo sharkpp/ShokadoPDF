@@ -74,6 +74,10 @@ async function main() {
   await copyFile(join(ROOT, 'tests', 'offline', 'harness.html'), join(DIST, TEST_HTML));
   await copyFile(join(ROOT, 'tests', 'offline', 'sample.pdf'), join(DIST, TEST_PDF));
 
+  const appVersion = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')).version;
+  const customizeJs = await readFile(join(ROOT, 'src-tauri', 'customize.js'), 'utf8');
+  const initScript = `window.__SHOKADO_VERSION__=${JSON.stringify(appVersion)};\n${customizeJs}`;
+
   const server = await startServer();
   const browser = await puppeteer.launch({
     executablePath: chrome, headless: true, protocolTimeout: 240000,
@@ -99,6 +103,69 @@ async function main() {
     if (!r?.cpdf?.ok) failures.push('CoherentPDF merge failed');
     if (blocked.length) failures.push('external requests attempted: ' + blocked.join(', '));
     await page.close();
+
+    // ---- UI customization checks (customize.js applied as in the app) ----
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const openUI = async (file) => {
+      const p = await browser.newPage();
+      await p.setRequestInterception(true);
+      p.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await p.evaluateOnNewDocument(initScript);
+      await p.goto(`http://localhost:${PORT}/${file}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await sleep(2200);
+      return p;
+    };
+
+    let p = await openUI('index.html'); // home
+    const home = await p.evaluate(() => ({
+      copyright: ([...document.querySelectorAll('footer p, [data-simple-footer] p')]
+        .map((p) => p.textContent).find((t) => /rights reserved|sharkpp/i.test(t))) || '',
+      version: (document.getElementById('app-version') || {}).textContent || '',
+      about: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
+      homeLink: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ホーム'),
+      usedBy: !!document.querySelector('[data-i18n="usedBy.title"]'),
+    }));
+    console.log('home:', JSON.stringify(home));
+    if (!/sharkpp/.test(home.copyright)) failures.push('home: footer copyright not updated');
+    if (home.version !== appVersion) failures.push(`home: version != ${appVersion} (got ${home.version})`);
+    if (!home.about) failures.push('home: About nav link missing');
+    if (home.homeLink) failures.push('home: Home nav link should be hidden on top page');
+    if (home.usedBy) failures.push('home: usedBy banner present');
+    await p.close();
+
+    p = await openUI('merge-pdf.html'); // tool page
+    const tool = await p.evaluate(() => {
+      const up = document.getElementById('uploader');
+      const cs = up ? getComputedStyle(up) : null;
+      return {
+        back: !!document.getElementById('back-to-tools'),
+        home: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ホーム'),
+        about: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
+        padTop: cs && cs.paddingTop, padLeft: cs && cs.paddingLeft,
+      };
+    });
+    console.log('tool:', JSON.stringify(tool));
+    if (tool.back) failures.push('tool: Back to Tools not removed');
+    if (!tool.home) failures.push('tool: Home nav link missing');
+    if (!tool.about) failures.push('tool: About nav link missing');
+    if (tool.padTop !== tool.padLeft) failures.push(`tool: uploader top gap != side gap (${tool.padTop} vs ${tool.padLeft})`);
+    await p.close();
+
+    p = await openUI('about.html'); // about page
+    const about = await p.evaluate(() => !!document.getElementById('shokado-about'));
+    console.log('about shokado-about:', about);
+    if (!about) failures.push('about: ShokadoPDF about content missing');
+    await p.close();
+
+    p = await openUI('pdf-multi-tool.html'); // multi-tool
+    const mt = await p.evaluate(() => ({
+      header: !!document.getElementById('shokado-mt-header'),
+      toolbar: !!document.querySelector('.toolbar-container'),
+    }));
+    console.log('multi-tool:', JSON.stringify(mt));
+    if (!mt.header) failures.push('multi-tool: header not injected');
+    if (!mt.toolbar) failures.push('multi-tool: toolbar missing (layout broken)');
+    await p.close();
   } finally {
     await browser.close();
     server.close();

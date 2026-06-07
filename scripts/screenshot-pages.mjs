@@ -96,6 +96,11 @@ async function main() {
   const chrome = findChrome();
   if (!chrome) throw new Error('Chrome not found. Set CHROME_PATH.');
 
+  // Inject the same customize.js the desktop app uses, so shots match the product.
+  const appVersion = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')).version;
+  const customizeJs = await readFile(join(ROOT, 'src-tauri', 'customize.js'), 'utf8');
+  const initScript = `window.__SHOKADO_VERSION__=${JSON.stringify(appVersion)};\n${customizeJs}`;
+
   // Fresh output dir.
   await rm(OUT, { recursive: true, force: true });
   await mkdir(OUT, { recursive: true });
@@ -128,6 +133,7 @@ async function main() {
           Object.defineProperty(navigator, 'language', { get: () => 'en-US' });
           Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
         });
+        await page.evaluateOnNewDocument(initScript);
         await page.setRequestInterception(true);
         page.on('request', (req) => (isLocalReq(req.url()) ? req.continue() : req.abort()));
         await page.goto(`http://localhost:${PORT}/${file}`, { waitUntil: 'load', timeout: 45000 });
