@@ -20,6 +20,10 @@ pub fn run() {
         .title("ShokadoPDF")
         .inner_size(1280.0, 800.0)
         .resizable(true)
+        // Let the BentoPDF web UI handle HTML5 file drops itself; otherwise
+        // Tauri's native drag-drop handler swallows the event and the page's
+        // drop zones never fire.
+        .disable_drag_drop_handler()
         .initialization_script(CUSTOMIZE_JS)
         .build()?;
 
