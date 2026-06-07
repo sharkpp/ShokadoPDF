@@ -165,6 +165,10 @@ async function main() {
         .catch(() => {});
       const ui = await page.evaluate(() => ({
         brand: (document.querySelector('#nav-brand a') || {}).textContent || null,
+        aboutLabel: (document.querySelector('[href="about.html"], a[href$="/about.html"]') || {}).textContent
+          ? (document.querySelector('[href="about.html"], a[href$="/about.html"]').textContent || '').trim()
+          : null,
+        hasContact: !!document.querySelector('[data-i18n="nav.contact"]'),
         hasLicensing: !!document.querySelector('[data-i18n="nav.licensing"]'),
         hasDocs: !!document.querySelector('[data-i18n="nav.docs"]'),
         hasNavGithub: !!document.querySelector('nav a[href*="github.com"]'),
@@ -179,6 +183,8 @@ async function main() {
       console.log('Part B UI:', JSON.stringify(ui, null, 2));
       const checks = [
         [ui.brand === 'ShokadoPDF', 'brand rebranded to ShokadoPDF'],
+        [ui.aboutLabel === 'ShokadoPDFについて', 'About nav relabeled to ShokadoPDFについて'],
+        [!ui.hasContact, 'Contact nav removed'],
         [!ui.hasLicensing, 'Licensing nav removed'],
         [!ui.hasDocs, 'Docs nav removed'],
         [!ui.hasNavGithub, 'GitHub nav button removed'],
@@ -191,6 +197,60 @@ async function main() {
         [ui.hasToolGrid, 'tool grid kept'],
       ];
       for (const [ok, label] of checks) if (!ok) failures.push('B: ' + label);
+      await page.close();
+    }
+
+    // ---------- Part C: tool page (Back to Tools removed) ----------
+    {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await page.evaluateOnNewDocument(customizeJs);
+      await page.goto(`http://localhost:${PORT}/merge-pdf.html`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
+      await page
+        .waitForFunction(() => !document.getElementById('back-to-tools'), {
+          timeout: 15000,
+          polling: 250,
+        })
+        .catch(() => {});
+      const c = await page.evaluate(() => ({
+        brand: (document.querySelector('#nav-brand a') || {}).textContent || null,
+        hasBack: !!document.getElementById('back-to-tools'),
+        hasContact: !!document.querySelector('[data-i18n="nav.contact"]'),
+      }));
+      console.log('Part C (merge-pdf.html):', JSON.stringify(c));
+      if (c.brand !== 'ShokadoPDF') failures.push('C: brand not rebranded');
+      if (c.hasBack) failures.push('C: Back to Tools not removed');
+      if (c.hasContact) failures.push('C: Contact not removed');
+      await page.close();
+    }
+
+    // ---------- Part D: about page replaced ----------
+    {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await page.evaluateOnNewDocument(customizeJs);
+      await page.goto(`http://localhost:${PORT}/about.html`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
+      await page
+        .waitForFunction(() => !!document.getElementById('shokado-about'), {
+          timeout: 15000,
+          polling: 250,
+        })
+        .catch(() => {});
+      const d = await page.evaluate(() => ({
+        hasShokadoAbout: !!document.getElementById('shokado-about'),
+        hasOldHero: !!document.getElementById('about-hero'),
+      }));
+      console.log('Part D (about.html):', JSON.stringify(d));
+      if (!d.hasShokadoAbout) failures.push('D: ShokadoPDF about content not injected');
+      if (d.hasOldHero) failures.push('D: original BentoPDF about content still present');
       await page.close();
     }
   } finally {
