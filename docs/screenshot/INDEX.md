@@ -2,6 +2,7 @@
 
 Width 1280px, full-page. Only locally-reachable pages (crawled from home).
 
+- about.jpg
 - add-attachments.jpg
 - add-blank-page.jpg
 - add-page-labels.jpg
