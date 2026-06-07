@@ -7,6 +7,25 @@
   "use strict";
   if (window.top !== window) return; // top frame only
 
+  // FOUC guard: this script runs before the page paints, so the un-customized
+  // BentoPDF page would briefly flash before our tweaks apply ("一瞬崩れて戻る").
+  // Hide the body (keep a dark background to avoid a white flash) until the
+  // first customization pass has run; a timeout guarantees we always reveal.
+  try {
+    var foucStyle = document.createElement("style");
+    foucStyle.textContent =
+      "html.shokado-pending{background:#111827!important}" +
+      "html.shokado-pending body{opacity:0!important}";
+    (document.head || document.documentElement).appendChild(foucStyle);
+    document.documentElement.classList.add("shokado-pending");
+  } catch (e) {}
+  function reveal() {
+    try {
+      document.documentElement.classList.remove("shokado-pending");
+    } catch (e) {}
+  }
+  setTimeout(reveal, 3000); // safety: never stay hidden
+
   var APP_VERSION = window.__SHOKADO_VERSION__ || "0.1.0";
 
   // Shokado-bento motif logo (matches the desktop app icon).
@@ -357,6 +376,9 @@
 
   function start() {
     apply();
+    // Reveal on the next frame, after the customized DOM has been laid out.
+    if (window.requestAnimationFrame) requestAnimationFrame(reveal);
+    else reveal();
     var tries = 0;
     var iv = setInterval(function () {
       apply();
