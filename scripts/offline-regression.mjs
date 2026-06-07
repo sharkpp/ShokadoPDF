@@ -115,6 +115,16 @@ async function main() {
       await sleep(2200);
       return p;
     };
+    const openUILang = async (file, lang) => {
+      const p = await browser.newPage();
+      await p.setRequestInterception(true);
+      p.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await p.evaluateOnNewDocument(`try{localStorage.setItem('i18nextLng','${lang}')}catch(e){}`);
+      await p.evaluateOnNewDocument(initScript);
+      await p.goto(`http://localhost:${PORT}/${file}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await sleep(2500);
+      return p;
+    };
 
     let p = await openUI('index.html'); // home
     const home = await p.evaluate(() => ({
@@ -204,6 +214,17 @@ async function main() {
     if (!mt.toolbar) failures.push('multi-tool: toolbar missing (layout broken)');
     if (mt.navLabel) failures.push('multi-tool: nav "PDF Multi Tool" label not removed');
     if (mt.close) failures.push('multi-tool: Close button not removed');
+    await p.close();
+
+    // i18n: injected nav links must follow the selected language (not stay JP)
+    p = await openUILang('merge-pdf.html', 'en');
+    const en = await p.evaluate(() => ({
+      home: (document.querySelector('.shokado-nav-home') || {}).textContent || '',
+      about: (document.querySelector('.shokado-nav-about') || {}).textContent || '',
+    }));
+    console.log('nav en:', JSON.stringify(en));
+    if (en.home !== 'Home') failures.push(`i18n: Home not translated (got "${en.home}")`);
+    if (/について/.test(en.about) || !en.about) failures.push(`i18n: About not translated (got "${en.about}")`);
     await p.close();
   } finally {
     await browser.close();

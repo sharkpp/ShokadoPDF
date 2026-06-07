@@ -155,18 +155,59 @@
         "style",
         "margin-left:auto;display:flex;gap:0.5rem;align-items:center;",
       );
-      var mk = function (href, label) {
+      var ja = currentLang() === "ja";
+      var mk = function (href, label, cls) {
         var a = doc.createElement("a");
         a.href = href;
         a.textContent = label;
-        a.className = "nav-link";
+        a.className = "nav-link " + cls;
         a.style.whiteSpace = "nowrap";
         return a;
       };
-      if (!isHome()) grp.appendChild(mk(base, "ホーム"));
-      grp.appendChild(mk(base + "about.html", "ShokadoPDFについて"));
+      if (!isHome())
+        grp.appendChild(mk(base, ja ? "ホーム" : "Home", "shokado-nav-home"));
+      grp.appendChild(
+        mk(
+          base + "about.html",
+          ja ? "ShokadoPDFについて" : "About",
+          "shokado-nav-about",
+        ),
+      );
       row.appendChild(grp);
     });
+    localizeNavLinks(doc);
+  }
+
+  // Translate the injected nav links to the current language using the local
+  // locale file (nav.home / nav.about), with "BentoPDF" -> "ShokadoPDF".
+  var _localeCache = {};
+  function localizeNavLinks(doc) {
+    var lang = currentLang();
+    var put = function (tr) {
+      var nav = (tr && tr.nav) || {};
+      if (nav.home)
+        doc.querySelectorAll(".shokado-nav-home").forEach(function (a) {
+          a.textContent = nav.home;
+        });
+      if (nav.about)
+        doc.querySelectorAll(".shokado-nav-about").forEach(function (a) {
+          a.textContent = String(nav.about).replace(/BentoPDF/g, "ShokadoPDF");
+        });
+    };
+    if (_localeCache[lang]) return put(_localeCache[lang]);
+    if (_localeCache[lang] === null) return; // fetch in flight
+    _localeCache[lang] = null;
+    fetch("/locales/" + lang + "/common.json")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        _localeCache[lang] = j;
+        put(j);
+      })
+      .catch(function () {
+        _localeCache[lang] = undefined;
+      });
   }
 
   // (6b) On the About page, show ShokadoPDF's own about content.
