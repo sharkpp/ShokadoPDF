@@ -10,7 +10,8 @@
     "build": "tauri build",
     "ios:dev": "tauri ios dev",
     "android:dev": "tauri android dev",
-    "test:offline": "node scripts/offline-regression.mjs"
+    "test:offline": "node scripts/offline-regression.mjs",
+    "screenshots": "node scripts/screenshot-pages.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
