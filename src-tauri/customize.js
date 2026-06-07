@@ -14,9 +14,65 @@
 //     content (keeps the app shell/nav so it isn't a dead end).
 //   - pdf-multi-tool page: add a visible title+subtitle header (it is the only
 //     tool page that ships without one).
+//   - Tool pages: keep the "How it works" section but drop everything below it
+//     (related tools / FAQ) and the footer.
+// It also exposes window.__shokadoNotifyDownload(path), called from Rust
+// (on_download) to show a toast with the saved file path after a download.
 (function () {
   "use strict";
   if (window.top !== window) return; // top frame only
+
+  // Called from the Rust side (on_download) after a file is saved, to show the
+  // destination path. Defined immediately so it exists before any download.
+  window.__shokadoNotifyDownload = function (path) {
+    try {
+      var id = "shokado-dl-toast";
+      var old = document.getElementById(id);
+      if (old) old.remove();
+      var box = document.createElement("div");
+      box.id = id;
+      box.setAttribute(
+        "style",
+        "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);" +
+          "z-index:2147483647;max-width:90vw;background:#1f2937;color:#fff;" +
+          "border:1px solid #374151;border-radius:12px;padding:12px 16px;" +
+          "box-shadow:0 10px 30px rgba(0,0,0,.45);font-size:14px;" +
+          "display:flex;align-items:center;gap:12px;",
+      );
+      var msg = document.createElement("div");
+      msg.setAttribute("style", "min-width:0;");
+      var t1 = document.createElement("div");
+      t1.textContent = "ダウンロードしました";
+      t1.setAttribute("style", "font-weight:600;margin-bottom:2px;");
+      var t2 = document.createElement("div");
+      t2.textContent = path;
+      t2.setAttribute(
+        "style",
+        "color:#9ca3af;font-size:12px;word-break:break-all;",
+      );
+      msg.appendChild(t1);
+      msg.appendChild(t2);
+      var close = document.createElement("button");
+      close.textContent = "×";
+      close.setAttribute(
+        "style",
+        "background:none;border:none;color:#9ca3af;font-size:18px;" +
+          "cursor:pointer;line-height:1;flex:none;",
+      );
+      close.onclick = function () {
+        box.remove();
+      };
+      box.appendChild(msg);
+      box.appendChild(close);
+      (document.body || document.documentElement).appendChild(box);
+      setTimeout(function () {
+        var b = document.getElementById(id);
+        if (b) b.remove();
+      }, 8000);
+    } catch (e) {
+      /* no-op */
+    }
+  };
 
   var ABOUT_HTML =
     '<section id="shokado-about" class="max-w-3xl mx-auto py-12 px-4 text-gray-200">' +
@@ -120,12 +176,32 @@
     main.parentElement.insertBefore(hdr, main);
   }
 
+  function stripToolPageBelowHowItWorks(doc) {
+    // Tool pages: keep the "How it works" section, drop everything below it
+    // (related tools, FAQ, …) and the footer. Only <section>/<footer> siblings
+    // are removed so the page's <script> modules are never touched.
+    var hiw = doc.querySelector('[data-i18n="howItWorks.title"]');
+    if (!hiw) return;
+    var section = hiw.closest("section");
+    if (!section) return;
+    var sib = section.nextElementSibling;
+    while (sib) {
+      var next = sib.nextElementSibling;
+      if (sib.tagName === "SECTION" || sib.tagName === "FOOTER") sib.remove();
+      sib = next;
+    }
+    doc.querySelectorAll("footer").forEach(function (f) {
+      f.remove();
+    });
+  }
+
   function apply() {
     try {
       rebrandAndTrimNav(document);
       stripHomeMarketing(document);
       replaceAbout(document);
       injectMultiToolHeader(document);
+      stripToolPageBelowHowItWorks(document);
     } catch (e) {
       // Never let customization break the app.
       console.warn("[ShokadoPDF] customize error:", e);

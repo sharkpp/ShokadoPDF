@@ -220,11 +220,19 @@ async function main() {
         brand: (document.querySelector('#nav-brand a') || {}).textContent || null,
         hasBack: !!document.getElementById('back-to-tools'),
         hasContact: !!document.querySelector('[data-i18n="nav.contact"]'),
+        hasHowItWorks: !!document.querySelector('[data-i18n="howItWorks.title"]'),
+        hasRelatedTools: !!document.querySelector('[data-i18n="relatedTools.title"]'),
+        hasFaq: !!document.querySelector('[data-i18n="faq.sectionTitle"]'),
+        hasFooter: !!document.querySelector('footer'),
       }));
       console.log('Part C (merge-pdf.html):', JSON.stringify(c));
       if (c.brand !== 'ShokadoPDF') failures.push('C: brand not rebranded');
       if (c.hasBack) failures.push('C: Back to Tools not removed');
       if (c.hasContact) failures.push('C: Contact not removed');
+      if (!c.hasHowItWorks) failures.push('C: How-it-works section was removed (should stay)');
+      if (c.hasRelatedTools) failures.push('C: related-tools section not removed');
+      if (c.hasFaq) failures.push('C: FAQ section not removed');
+      if (c.hasFooter) failures.push('C: footer not removed');
       await page.close();
     }
 
@@ -289,6 +297,38 @@ async function main() {
       if (e.title !== 'PDFマルチツール') failures.push('E: multi-tool header title wrong');
       if (!e.hasToolbar) failures.push('E: multi-tool toolbar missing (layout broken)');
       if (!e.headerAboveToolbar) failures.push('E: header not above toolbar');
+      await page.close();
+    }
+
+    // ---------- Part F: download-path toast (JS half of task 1) ----------
+    // The Tauri on_download hook itself only fires in the real app; here we
+    // verify the toast helper customize.js exposes for it to call.
+    {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', (req) => (isLocal(req.url()) ? req.continue() : req.abort()));
+      await page.evaluateOnNewDocument(customizeJs);
+      await page.goto(`http://localhost:${PORT}/index.html`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
+      const f = await page.evaluate(() => {
+        const p = '/Users/test/Downloads/output.pdf';
+        if (typeof window.__shokadoNotifyDownload !== 'function') {
+          return { hasFn: false };
+        }
+        window.__shokadoNotifyDownload(p);
+        const t = document.getElementById('shokado-dl-toast');
+        return {
+          hasFn: true,
+          hasToast: !!t,
+          showsPath: !!t && t.textContent.includes(p),
+        };
+      });
+      console.log('Part F (download toast):', JSON.stringify(f));
+      if (!f.hasFn) failures.push('F: __shokadoNotifyDownload helper not defined');
+      if (!f.hasToast) failures.push('F: download toast not shown');
+      if (!f.showsPath) failures.push('F: download toast missing the path');
       await page.close();
     }
   } finally {
