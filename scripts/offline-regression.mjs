@@ -142,6 +142,7 @@ async function main() {
         home: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ホーム'),
         about: [...document.querySelectorAll('nav a')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
         navLinkClass: [...document.querySelectorAll('nav a.nav-link')].some((a) => a.textContent.trim() === 'ShokadoPDFについて'),
+        logoSvg: /^data:image\/svg/.test((document.querySelector('nav img') || {}).getAttribute?.('src') || ''),
         padTop: cs && cs.paddingTop, padLeft: cs && cs.paddingLeft,
       };
     });
@@ -150,7 +151,35 @@ async function main() {
     if (!tool.home) failures.push('tool: Home nav link missing');
     if (!tool.about) failures.push('tool: About nav link missing');
     if (!tool.navLinkClass) failures.push('tool: nav links missing class="nav-link"');
+    if (!tool.logoSvg) failures.push('tool: brand logo not swapped to Shokado SVG');
     if (tool.padTop !== tool.padLeft) failures.push(`tool: uploader top gap != side gap (${tool.padTop} vs ${tool.padLeft})`);
+    await p.close();
+
+    // task 2: centered pages should align the card to the top (small gap)
+    p = await openUI('table-of-contents.html');
+    const t2 = await p.evaluate(() => {
+      const w = document.querySelector('.min-h-screen');
+      const cs = w ? getComputedStyle(w) : {};
+      return { align: cs.alignItems, padTop: cs.paddingTop, padLeft: cs.paddingLeft };
+    });
+    console.log('toc:', JSON.stringify(t2));
+    if (t2.align !== 'flex-start') failures.push('toc: card not top-aligned');
+    if (t2.padTop !== t2.padLeft) failures.push(`toc: top gap != side gap (${t2.padTop} vs ${t2.padLeft})`);
+    await p.close();
+
+    // task 3: form-creator — top aligned + card widened
+    p = await openUI('form-creator.html');
+    const fc = await p.evaluate(() => {
+      const w = document.querySelector('.min-h-screen');
+      const card = w && w.firstElementChild;
+      return {
+        align: w ? getComputedStyle(w).alignItems : '',
+        maxw: card ? card.style.maxWidth : '',
+      };
+    });
+    console.log('form-creator:', JSON.stringify(fc));
+    if (fc.align !== 'flex-start') failures.push('form-creator: not top-aligned');
+    if (fc.maxw !== 'none') failures.push('form-creator: card not widened (max-width)');
     await p.close();
 
     p = await openUI('about.html'); // about page

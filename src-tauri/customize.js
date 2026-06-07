@@ -9,6 +9,18 @@
 
   var APP_VERSION = window.__SHOKADO_VERSION__ || "0.1.0";
 
+  // Shokado-bento motif logo (matches the desktop app icon).
+  var LOGO_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' +
+    '<rect x="44" y="44" width="424" height="424" rx="76" fill="#0f172a"/>' +
+    '<rect x="44" y="44" width="424" height="424" rx="76" fill="none" stroke="#6366f1" stroke-width="22"/>' +
+    '<rect x="92" y="92" width="150" height="150" rx="22" fill="#f8fafc"/>' +
+    '<rect x="270" y="92" width="150" height="150" rx="22" fill="#fb7185"/>' +
+    '<rect x="92" y="270" width="150" height="150" rx="22" fill="#34d399"/>' +
+    '<rect x="270" y="270" width="150" height="150" rx="22" fill="#fbbf24"/>' +
+    "</svg>";
+  var LOGO_URI = "data:image/svg+xml," + encodeURIComponent(LOGO_SVG);
+
   var ABOUT_HTML =
     '<section id="shokado-about" class="max-w-3xl mx-auto py-12 px-4 text-gray-200">' +
     '<h1 class="text-3xl md:text-4xl font-bold text-white mb-6">ShokadoPDFについて</h1>' +
@@ -36,6 +48,47 @@
     var b = document.querySelector("#nav-brand a, nav a");
     var h = (b && b.getAttribute("href")) || "/";
     return h.endsWith("/") ? h : h + "/";
+  }
+  function slug() {
+    var p = path().split("/").pop() || "index";
+    return p.replace(/\.html$/, "") || "index";
+  }
+
+  // (Icon) Swap the brand logo (nav/footer) and favicon to the Shokado motif.
+  function applyLogo(doc) {
+    doc.querySelectorAll("nav img, footer img").forEach(function (img) {
+      if (img.getAttribute("src") !== LOGO_URI)
+        img.setAttribute("src", LOGO_URI);
+    });
+    doc.querySelectorAll('link[rel~="icon"]').forEach(function (l) {
+      l.setAttribute("href", LOGO_URI);
+      l.setAttribute("type", "image/svg+xml");
+    });
+  }
+
+  // (2)(3) Minimize the gap between the header and the tool card on pages whose
+  // wrapper vertically-centers the card (big top gap) or has extra top padding;
+  // for form-creator also widen the card to cut the left/right gap.
+  function fixToolGaps(doc) {
+    var T2 = {
+      "table-of-contents": 1,
+      bookmark: 1,
+      "json-to-pdf": 1,
+      "markdown-to-pdf": 1,
+      "pdf-to-json": 1,
+    };
+    var s = slug();
+    var isForm = s === "form-creator";
+    if (!T2[s] && !isForm) return;
+    var wrap = doc.querySelector(".min-h-screen");
+    if (!wrap) return;
+    var cs = getComputedStyle(wrap);
+    if (cs.display.indexOf("flex") >= 0) wrap.style.alignItems = "flex-start";
+    wrap.style.paddingTop = cs.paddingLeft; // top gap == side gap
+    if (isForm) {
+      var card = wrap.firstElementChild;
+      if (card) card.style.maxWidth = "none"; // cut left/right gap
+    }
   }
 
   // (1) Remove the "Used by companies and people…" banner if present.
@@ -146,10 +199,12 @@
 
   function apply() {
     try {
+      applyLogo(document);
       removeUsedByBanner(document);
       fixFooter(document);
       removeBackToTools(document);
       tightenUploaderGap(document);
+      fixToolGaps(document);
       addNavLinks(document);
       replaceAbout(document);
       injectMultiToolHeader(document);
