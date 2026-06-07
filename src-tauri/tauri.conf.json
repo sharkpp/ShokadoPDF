@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../core/dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm --prefix core run dev -- --port 1420 --strictPort",
-    "beforeBuildCommand": "npm --prefix core run build"
+    "beforeDevCommand": "SIMPLE_MODE=true VITE_BRAND_NAME=ShokadoPDF npm --prefix core run dev -- --port 1420 --strictPort",
+    "beforeBuildCommand": "SIMPLE_MODE=true VITE_BRAND_NAME=ShokadoPDF npm --prefix core run build"
   },
   "app": {
     "windows": [],
