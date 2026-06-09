@@ -23,3 +23,15 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
+
+# The whole (multi-language) frontend is embedded into this crate by Tauri, so
+# its codegen is very memory-heavy and can make rustc/LLVM run out of memory
+# (notably on Windows). Compile this crate cheaply — its own code is trivial and
+# the embedded assets are just data — while keeping release optimizations for
+# the dependency crates. This drastically lowers peak compile memory.
+[profile.release.package.app]
+opt-level = 0
+codegen-units = 256
+
+[profile.release.build-override]
+opt-level = 0
